@@ -14,7 +14,7 @@
         android:layout_marginStart="44dp"
         app:layout_constraintStart_toStartOf="parent"
         tools:layout_editor_absoluteY="0dp"
-        tools:srcCompat="@tools:sample/avatars" />
+        android:background="@drawable/baseline_picture_as_pdf_24"/>
 
     <Button
         android:id="@+id/Download"
@@ -25,6 +25,5 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.467"
         app:layout_constraintStart_toEndOf="@+id/imageView2"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.504" />
+        app:layout_constraintTop_toTopOf="parent"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

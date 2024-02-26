@@ -2,147 +2,88 @@ package com.example.firebasestorage
 
 import android.Manifest
 import android.app.DownloadManager
-import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
-import android.widget.Button
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
 import java.io.File
 
 class FileActivity : AppCompatActivity() {
 
-    private lateinit var storageReference: StorageReference
-    private lateinit var selectedFileUri: Uri
-    private val PICK_FILE_REQUEST_CODE = 101
-    private val REQUEST_PERMISSION_CODE = 102
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var imagesList: ArrayList<String>
+    private lateinit var storageReference: FirebaseStorage
+    private val REQUEST_PERMISSION_CODE = 101
 
-    private lateinit var btnSelectFile: Button
-    private lateinit var btnUploadFile: Button
-    private lateinit var btnDownloadFile: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_file)
 
-        storageReference = FirebaseStorage.getInstance().reference
+        recyclerView = findViewById(R.id.recyclerView2) ?: throw IllegalStateException("RecyclerView not found")
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        imagesList = arrayListOf()
 
-        btnSelectFile = findViewById(R.id.file)
-        btnUploadFile = findViewById(R.id.upload_file)
-        btnDownloadFile = findViewById(R.id.download_file)
+        storageReference = FirebaseStorage.getInstance()
 
-        btnSelectFile.setOnClickListener {
-            checkPermissionAndSelectFile()
-        }
-
-        btnUploadFile.setOnClickListener {
-            selectedFileUri.let { uri ->
-                uploadFile(uri)
-            }
-        }
-
-        btnDownloadFile.setOnClickListener {
-            downloadFile()
-        }
-    }
-
-    private fun checkPermissionAndSelectFile() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                REQUEST_PERMISSION_CODE
-            )
+        if (!checkPermission()) {
+            Log.d("Permission", "Permission not granted. Requesting...")
+            requestPermission()
         } else {
-            selectFile()
+            Log.d("Permission", "Permission already granted")
+            loadFiles()
         }
     }
 
-    private fun selectFile() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.type = "*/*" // Allow all file types
-        startActivityForResult(intent, PICK_FILE_REQUEST_CODE)
-    }
-
-    private fun uploadFile(uri: Uri) {
-        val fileRef = storageReference.child("files/${System.currentTimeMillis()}")
-
-        fileRef.putFile(uri)
-            .addOnSuccessListener {
-                Toast.makeText(this, "File uploaded successfully", Toast.LENGTH_SHORT).show()
+    private fun loadFiles() {
+        storageReference.reference.child("files").listAll().addOnSuccessListener { listResult ->
+            val downloadUrls = ArrayList<String>()
+            listResult.items.forEach { item ->
+                item.downloadUrl.addOnSuccessListener { uri ->
+                    downloadUrls.add(uri.toString())
+                    if (downloadUrls.size == listResult.items.size) {
+                        recyclerView.adapter = ImageAdapter(downloadUrls) { fileUrl ->
+                            downloadFile(fileUrl)
+                        }
+                    }
+                }.addOnFailureListener { exception ->
+                    Toast.makeText(
+                        this@FileActivity,
+                        "Failed to retrieve File: ${exception.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(this, "Failed to upload file: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    private fun downloadFile() {
-        // Replace "fileUrl" with the actual URL of the file in Firebase Storage
-        val fileUrl = "your_file_url_here"
-        val storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(fileUrl)
-
-        storageRef.downloadUrl.addOnSuccessListener { uri ->
-            val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            val request = DownloadManager.Request(uri)
-            request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
-            request.setAllowedOverRoaming(false)
-            request.setTitle("File Download")
-            request.setDescription("Downloading file...")
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "downloaded_file")
-            downloadManager.enqueue(request)
-        }.addOnFailureListener { e ->
-            Toast.makeText(this, "Failed to download file: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-
-        storageRef.getFile(selectedFileUri).addOnSuccessListener {
-            Toast.makeText(this@FileActivity,"File downloaded successfully", Toast.LENGTH_SHORT).show()
-        }.addOnFailureListener {exception ->
-            Toast.makeText(this@FileActivity,"Failed to download file: ${exception.message}", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener { exception ->
+            Toast.makeText(
+                this@FileActivity,
+                "Failed to list files: ${exception.message}",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
-//    private fun downloadImage(url: String) {
-//
-//        val storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(url)
-//        val localFile = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "${System.currentTimeMillis()}.jpg")
-//
-//        val request = DownloadManager.Request(Uri.parse(url))
-//            .setTitle("Image Download")
-//            .setDescription("Downloading..")
-//            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-//            .setDestinationInExternalPublicDir(
-//                Environment.DIRECTORY_DOWNLOADS,
-//                "${System.currentTimeMillis()}.jpg"
-//            )
-//            .setAllowedOverMetered(true)
-//            .setAllowedOverRoaming(true)
-//
-//        storageRef.getFile(localFile).addOnSuccessListener {
-//            Toast.makeText(this@MainActivity2,"Image downloaded successfully", Toast.LENGTH_SHORT).show()
-//        }.addOnFailureListener { exception ->
-//            Toast.makeText(this@MainActivity2,"Failed to download image: ${exception.message}", Toast.LENGTH_SHORT).show()
-//        }
-//    }
+    private fun checkPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+    }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == RESULT_OK && data != null) {
-            selectedFileUri = data.data!!
-            Toast.makeText(this, "File selected: ${selectedFileUri.path}", Toast.LENGTH_SHORT).show()
-        }
+    private fun requestPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+            REQUEST_PERMISSION_CODE
+        )
     }
 
     override fun onRequestPermissionsResult(
@@ -151,14 +92,38 @@ class FileActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_PERMISSION_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
-        if (requestCode == REQUEST_PERMISSION_CODE && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            selectFile()
-        } else {
-            Toast.makeText(this, "Permission denied. Cannot select file.", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Storage permission granted. You can now download files.", Toast.LENGTH_SHORT).show()
+                loadFiles()
+            }
+        }
+    }
+
+    private fun downloadFile(url: String) {
+        val storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(url)
+        val localFile = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "${System.currentTimeMillis()}.pdf"
+        )
+
+        val request = DownloadManager.Request(Uri.parse(url))
+            .setTitle("File Download")
+            .setDescription("Downloading...")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalPublicDir(
+                Environment.DIRECTORY_DOWNLOADS,
+                "${System.currentTimeMillis()}.pdf"
+            )
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(true)
+
+        storageRef.getFile(localFile).addOnSuccessListener {
+            Toast.makeText(this@FileActivity, "File downloaded successfully", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener { exception ->
+            Toast.makeText(this@FileActivity, "Failed to download file: ${exception.message}", Toast.LENGTH_SHORT).show()
         }
     }
 }
-
-
-

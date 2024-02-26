@@ -14,14 +14,19 @@
         android:layout_height="wrap_content"
         android:text="firebase cloud storage"
         android:textAlignment="center"
-        android:textSize="30dp"
+        android:textSize="30sp"
         android:textStyle="bold"
         app:layout_constraintTop_toTopOf="parent"/>
 
     <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView2"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_marginTop="50dp"
-        tools:listitem="@layout/list_file"/>
+        android:orientation="vertical"
+        android:scrollbars="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textView3"
+        tools:listitem="@layout/list_item"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

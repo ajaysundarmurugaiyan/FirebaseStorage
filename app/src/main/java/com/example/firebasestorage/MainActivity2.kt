@@ -43,7 +43,7 @@ class MainActivity2 : AppCompatActivity() {
             listResult.items.forEach { item ->
                 item.downloadUrl.addOnSuccessListener { uri ->
                     imagesList.add(uri.toString())
-                    recyclerView.adapter = ImageAdapter(imagesList, this@MainActivity2) { imageUrl ->
+                    recyclerView.adapter = ImageAdapter(imagesList) { imageUrl ->
                         downloadImage(imageUrl)
                     }
                 }.addOnFailureListener { exception ->
@@ -81,16 +81,6 @@ class MainActivity2 : AppCompatActivity() {
             }
         }
     }
-
-//    private fun downloadImage(imageUrl: String) {
-//        val storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(imageUrl)
-//        val localFile = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "${System.currentTimeMillis()}.jpg")
-//        storageRef.getFile(localFile).addOnSuccessListener {
-//            Toast.makeText(this@MainActivity2,"Image downloaded successfully", Toast.LENGTH_SHORT).show()
-//        }.addOnFailureListener { exception ->
-//            Toast.makeText(this@MainActivity2,"Failed to download image: ${exception.message}", Toast.LENGTH_SHORT).show()
-//        }
-//    }
 private fun downloadImage(url: String) {
 
     val storageRef = FirebaseStorage.getInstance().getReferenceFromUrl(url)
